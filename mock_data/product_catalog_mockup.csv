@@ -1,0 +1,4 @@
+Product_Name,Horsepower,Weight_kg,Price_Range,Application,Product_URL
+"Tractor Alpha X1",150,4500,"100k - 150k USD","General Farming","https://example.com/alpha-x1"
+"Harvester Pro 500",450,12000,"300k - 400k USD","Large Scale Grain","https://example.com/pro-500"
+"Compact Loader L2",75,2800,"50k - 70k USD","Small Farms / Orchards","https://example.com/l2"

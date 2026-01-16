@@ -1,0 +1,4 @@
+Date,SessionID,User_Query,Bot_Response,Sentiment,Is_Lead
+"2023-10-01 10:15:00","sess_001","How much power does Alpha X1 have?","The Alpha X1 has 150 HP.","COLD LEAD","No"
+"2023-10-02 14:20:00","sess_002","I want to buy a Harvester. Call me: 555-123-456","I identified interest in Harvester. A manager will call you at 555-123-456.","HOT LEAD","Yes"
+"2023-10-03 09:05:00","sess_003","Do you have small tractors?","Yes, the Compact Loader L2 is perfect for small farms.","COLD LEAD","No"
