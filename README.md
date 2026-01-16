@@ -1,97 +1,105 @@
-# 🤖 Expert AI Sales Advisor & Analytics System (Reference Architecture)
+# 🤖 Expert AI Technical Advisor & Sales Automation System
 
-> A production-grade RAG (Retrieval-Augmented Generation) architecture designed for high-ticket sales. Features a decoupled frontend/backend design for low latency and automated business intelligence reporting.
+> **Reference Architecture:** A sophisticated, multi-agent AI system designed for technical sales of complex industrial machinery. Features a high-fidelity RAG engine, automated engineering "sanity checks," and an asynchronous lead-capture pipeline.
 
 ![Status](https://img.shields.io/badge/Status-Reference_Architecture-blue)
 ![Tech Stack](https://img.shields.io/badge/n8n-Self_Hosted-red)
-![AI Model](https://img.shields.io/badge/Model-GPT--4o-green)
+![AI Model](https://img.shields.io/badge/Model-GPT--4o_|_GPT--4o--mini-green)
 
 ---
 
 ## ⚠️ Disclaimer
-
-This repository contains a sanitized reference implementation inspired by real-world production systems I have architected. No proprietary data, specific business logic, internal API credentials, or client-specific configurations are included. This project demonstrates the architectural patterns used to solve complex business problems using Low-Code and Generative AI.
+This repository contains a sanitized reference implementation inspired by production systems architected for heavy machinery distributors. **All proprietary brand data, internal API credentials, and client-specific business logic have been removed.** This project demonstrates architectural patterns and prompt engineering for enterprise AI deployments.
 
 ---
 
-## 💡 Project Overview
+## 💡 System Capabilities
 
-This system is a multi-tier AI solution designed to act as a 24/7 Virtual Sales Advisor. It doesn't just answer questions; it qualifies leads, tracks customer sentiment in real-time, and provides management with weekly automated performance audits.
+This system acts as a **Virtual Technical Consultant** for complex, high-ticket equipment. It follows a "Diagnose before Propose" methodology, ensuring that recommendations are technically viable and compliant with engineering constraints.
 
-### Key Components:
-
-*   **High-Performance Chat Interface:** Optimized for speed (<3s response time) using a decoupled architecture.
-*   **Asynchronous Analytics:** A "Fire-and-Forget" backend that processes logs and extracts CRM data without slowing down the user experience.
-*   **Automated Reporting:** An AI-driven analyst that audits weekly logs and sends HTML reports to stakeholders.
+### Core Features:
+*   **Technical Diagnosis Engine:** The agent identifies customer requirements (capacity, power, operational scale) before searching the Vector Store for specific equipment models.
+*   **Engineering "Sanity Check":** Built-in logic to prevent configuration errors (e.g., ensuring an attachment is compatible with the base machine's power output).
+*   **Brand Exclusion Logic:** Intelligent query processing that filters out competitor mentions when searching the internal knowledge base for compatible solutions.
+*   **Multi-Agent Lead Capture:** A dedicated "Sentiment Agent" parses conversation history in the background to extract lead data (Name, Phone, Intent) only when purchase signals are detected.
+*   **Compliance Automation:** Automated insertion of mandatory legal disclaimers and data processing notices (GDPR) whenever personal information is requested.
 
 ---
 
 ## 🛠️ System Architecture
 
-The system utilizes a **Decoupled Logic Pattern** built on **n8n** (Self-hosted via Docker).
+The system uses a **Decoupled "Fire-and-Forget" Architecture** to ensure zero latency for the end user.
 
 ### Logic Flow
 
 ```mermaid
 graph TD
-    User([Web User]) -->|Query| Frontend[1. Chat Frontend]
+    User([Web User]) -->|Technical Query| Frontend[1. Advisor Agent - GPT-4o]
+    
+    subgraph "Reasoning & Tools"
+    Frontend <-->|RAG| VectorDB[(Technical Manuals)]
+    Frontend <-->|Live Data| WebSearch[Web Search - Authorized Domain]
+    end
+
     Frontend -->|Instant Response| User
     
-    Frontend -.->|Async Trigger| Backend[2. Analytics Backend]
+    %% Async Trigger
+    Frontend -.->|Async Execute| Backend[2. Analytics Workflow]
     
-    subgraph "Internal Processing"
-    Backend -->|Analysis| AI_Model((GPT-4o-Mini))
-    AI_Model -->|Data| CRM["CRM / Google Sheets"]
+    subgraph "Background Processing"
+    Backend -->|Lead Parsing| LeadAgent((Sentiment Agent - GPT-4o-mini))
+    LeadAgent -->|JSON Object| Qualifier{Is Valid Lead?}
+    Qualifier -->|Yes| CRM[(CRM / Google Sheets)]
+    Qualifier -->|No| Logs[(Conversation Logs)]
     end
-    
-    CRM -->|Weekly Trigger| Reporter[3. Automated Reporting]
-    Reporter -->|HTML Report| Management["Sales Manager Email"]
 ```
 ---
 
 ## 📂 Repository Structure
 
 *   **/workflows_sanitized/**
-    *   `1_chat_frontend_logic.json`: The core chat engine with RAG capabilities and session memory.
-    *   `2_analytics_backend_async.json`: Background processor for sentiment analysis and CRM logging.
-    *   `3_automated_reporting.json`: Weekly scheduled task that generates business insights from logs.
-*   **/diagrams/**: Visual representations of the workflow logic (screenshots).
-*   **/mock_data/**: Templates for technical product data.
+    *   `1_chat_advisor_frontend.json`: The core RAG-enabled agent with complex technical diagnosis logic and intent detection.
+    *   `2_background_analytics.json`: The asynchronous "Fire-and-Forget" backend for lead extraction, sentiment analysis, and CRM synchronization.
+    *   `3_automated_reporting.json`: A scheduled business intelligence (BI) workflow that generates weekly performance audits and lead quality summaries for management.
+*   **/diagrams/**: Technical architecture diagrams and logic flow schematics (Mermaid & screenshots).
+*   **/mock_data/**: Sanitized technical specifications (CSV/PDF) and sample lead log templates for testing.
 
+---
 ---
 
 ## 🧠 Engineering Challenges & Solutions
 
-### 1. Latency Optimization (The "Decoupling" Strategy)
+### 1. Zero-Latency Asynchronous Analytics (The "Decoupling" Pattern)
+**Problem:** Real-time sentiment analysis and lead data extraction traditionally add 5-10 seconds to the response time, significantly degrading the user experience.  
+**Solution:** I implemented a **Decoupled Architecture** using n8n’s sub-workflow execution with the `waitForSubWorkflow: false` (Fire & Forget) configuration. The Advisor Agent responds to the user in under 3 seconds, while a background "Sentiment Agent" handles the complex data parsing and CRM logging independently.
 
-**Problem:** Performing sentiment analysis and CRM logging during the chat caused a 10-15 second delay, leading to poor user experience.  
-**Solution:** I implemented an asynchronous **"Async Trigger"**. The Frontend workflow delivers the AI answer immediately and then triggers the Backend workflow to handle the "heavy lifting" (logging/parsing) independently.
+### 2. Engineering Constraint Validation & Hallucination Control
+**Problem:** Generic LLMs often agree to technically impossible configurations (e.g., suggesting a high-capacity attachment for a low-power base machine).  
+**Solution:** Developed a **Strict Logic Layer** within the System Prompt. The agent is forced to perform a "Technical Sanity Check" by cross-referencing user requirements with the verified technical specs in the Vector Store. If a mismatch is detected, the agent is programmed to politely correct the user rather than providing a hallucinated solution.
 
-### 2. Hallucination Control in Technical Sales
+### 3. Intent-Triggered Lead Conversion
+**Problem:** Static "contact us" forms are often ignored, while aggressive bots asking for data too early increase bounce rates.  
+**Solution:** Engineered a **Contextual Conversion Trigger**. The AI remains in "Advisory Mode" until it detects specific purchase intent signals (e.g., pricing inquiries, requests for financing, or compatibility questions). At that precise moment, the agent triggers a lead-capture module, providing a seamless transition from information gathering to a sales opportunity.
 
-**Problem:** The AI suggested incorrect specifications for industrial machinery.  
-**Solution:** Implemented a strict **System Prompt Hierarchy**. The model is forced to prioritize the "File Search" (Vector Store) over its general knowledge and is programmatically instructed to admit uncertainty rather than guessing.
-
-### 3. Real-Time Lead Qualification & GDPR Compliance
-**Problem:** Manual lead qualification is slow, and capturing data without proper legal consent poses a compliance risk.  
-**Solution:** Engineered an autonomous qualification logic where the AI detects "buying signals" in real-time. Upon identifying high-intent users, the agent contextually requests their name and phone number while providing mandatory GDPR/RODO disclosures. Captured leads are instantly synchronized with a Google Sheets CRM for immediate sales follow-up.
-
-### 4. Automated Performance Audits & BI
-**Problem:** Managers had no time to read thousands of chat logs to find "Hot Leads" or identify knowledge gaps.  
-**Solution:** Developed a weekly reporting workflow that uses **GPT-4o** to scan all logs, identify common customer pain points, and highlight high-intent leads in a clean, professional HTML email summary sent directly to stakeholders.
+### 4. Background Data Structuring for Sales Prioritization
+**Problem:** Raw chat logs are time-consuming for sales managers to review and audit.  
+**Solution:** The background Analytics Workflow uses **JSON Output Parsing** to distill entire conversations into four actionable fields: `sentiment` (HOT/COLD), `phone`, `name`, and `interest`. This allows for automated lead scoring and ensures that the sales team prioritizes the highest-value inquiries first.
 
 ---
 
 ## 🤝 Transparency: Human vs. AI Role
 
-*   **My Role (Architect):** Designed the multi-workflow architecture, defined the RAG strategy, engineered the prompt logic, and handled the DevOps setup (VPS, Docker, SSL).
-*   **AI Role (Assistant):** Assisted in writing specific JavaScript snippets for data formatting and provided debugging support for API error handling.
+This project was built using an **AI-Augmented Systems Engineering** approach, focusing on high-level architecture and precise prompt engineering.
+
+*   **MarTech Architect (Me):** Designed the multi-workflow async logic, defined the agrotechnical/technical constraint rules, and engineered the conversion strategy. Configured the VPS environment, Docker containers, and RAG (Vector Store) hierarchy.
+*   **AI Role:** Assisted in generating specific JavaScript snippets for JSON data transformation and provided troubleshooting support for API-specific error handling (e.g., handling rate limits and token optimization).
 
 ---
 
 ## 🚀 Deployment Requirements
 
 *   **Orchestrator:** n8n (Self-hosted on Docker)
-*   **LLM:** OpenAI API (GPT-4o and GPT-4o-mini)
-*   **Storage:** Google Sheets API (as a lightweight CRM)
-*   **Email:** Gmail/SMTP for reporting
+*   **Inference Engine:** OpenAI GPT-4o (Advisor) & GPT-4o-mini (Analytics)
+*   **Knowledge Base:** OpenAI File Search (RAG)
+*   **Data Destination:** Google Sheets API (as a Lightweight CRM)
+*   **External Search:** Authorized Web Search Tool (for dynamic updates)
