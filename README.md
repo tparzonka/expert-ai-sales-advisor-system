@@ -91,7 +91,7 @@ graph TD
 
 This project was built using an **AI-Augmented Systems Engineering** approach, focusing on high-level architecture and precise prompt engineering.
 
-*   **MarTech Architect (Me):** Designed the multi-workflow async logic, defined the agrotechnical/technical constraint rules, and engineered the conversion strategy. Configured the VPS environment, Docker containers, and RAG (Vector Store) hierarchy.
+*   **My Role (Architect):** Designed the multi-workflow async logic, defined the agrotechnical/technical constraint rules, and engineered the conversion strategy. Configured the VPS environment, Docker containers, and RAG (Vector Store) hierarchy.
 *   **AI Role:** Assisted in generating specific JavaScript snippets for JSON data transformation and provided troubleshooting support for API-specific error handling (e.g., handling rate limits and token optimization).
 
 ---
