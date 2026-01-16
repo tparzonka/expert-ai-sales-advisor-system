@@ -1,0 +1,170 @@
+{
+  "name": "Enterprise Sales Chatbot | Automated Reporting",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        464
+      ],
+      "id": "bee3ed87-c231-40f0-b282-c9a1b7cffd0b",
+      "name": "Weekly Timer"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Chatbot Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/placeholder"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/placeholder"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        464
+      ],
+      "id": "38da4b10-cb47-4ffb-9329-13836f044fbe",
+      "name": "Fetch Weekly Logs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIGURATION\nconst daysLookback = 7;\nconst oneWeekAgo = new Date();\noneWeekAgo.setDate(oneWeekAgo.getDate() - daysLookback);\n\n// Get data from previous node\nconst rows = $input.all();\n\n// Filter and format for LLM context\nlet chatHistory = \"\";\nlet count = 0;\n\nfor (const row of rows) {\n  const item = row.json;\n  \n  // Parse date from your specific format (yyyy-MM-dd HH:mm:ss)\n  const rowDate = new Date(item['Date']);\n\n  // Filter by date range\n  if (rowDate >= oneWeekAgo) {\n    count++;\n    // Construct readable block for AI analysis\n    chatHistory += `[${item['Date']}] Category: ${item['Sentiment']}\nUser: ${item['User Query']}\nBot: ${item['Bot Response']}\n---\n`;\n  }\n}\n\n// Return prepared payload\nreturn {\n  json: {\n    reportData: chatHistory,\n    totalConversations: count,\n    dateStart: oneWeekAgo.toISOString().split('T')[0],\n    dateEnd: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        464
+      ],
+      "id": "61d5009b-852c-4795-bb51-8d675251d713",
+      "name": "Filter Last 7 Days"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a Business Analyst for [COMPANY_NAME].\nPrepare a weekly summary of the AI Chatbot's performance based on the logs below.\n\nLOGS:\n{{ $json.reportData }}\n\nYOUR TASK - GENERATE AN HTML REPORT:\n1. **Statistics:** Total conversations analyzed.\n2. **Top Questions:** What products/topics were most popular? (Top 3-5).\n3. **Issues / Knowledge Gaps:** Did the bot fail to answer specific questions? What data is missing?\n4. **Lead Quality:** Were there any high-intent purchasing signals? What were they about?\n5. **Recommendations:** What should be improved in the Knowledge Base or System Prompts?\n\nFORMATTING RULES (HTML):\n1. Do NOT use Markdown (no ```html blocks).\n2. Use `<h3>` for headers and style them with color #367C2B (Brand Green).\n3. Use `<b>` for key metrics.\n4. Use `<ul>` and `<li>` for lists.\n5. Insert `<br>` between sections.\n\nSTRUCTURE TEMPLATE:\n<h3 style=\"color: #367C2B;\">1. STATISTICS</h3>\n<p>Analyzed conversations: <b>X</b></p>\n\n<h3 style=\"color: #367C2B;\">2. TOP QUESTIONS</h3>\n<ul>\n<li>Topic 1...</li>\n</ul>"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1184,
+        464
+      ],
+      "id": "eb55329f-140f-4299-a412-390c60094a87",
+      "name": "AI Business Analyst"
+    },
+    {
+      "parameters": {
+        "sendTo": "manager@example.com",
+        "subject": "Weekly AI Chatbot Report",
+        "message": "={{ $json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        464
+      ],
+      "id": "c0d77360-a000-44d8-9d14-5da60ac9083b",
+      "name": "Send Email Report",
+      "webhookId": "placeholder_webhook_id"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekly Timer": {
+      "main": [
+        [
+          {
+            "node": "Fetch Weekly Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weekly Logs": {
+      "main": [
+        [
+          {
+            "node": "Filter Last 7 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Last 7 Days": {
+      "main": [
+        [
+          {
+            "node": "AI Business Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Business Analyst": {
+      "main": [
+        [
+          {
+            "node": "Send Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3c30a38a1c97c07e9f6cb5ea0c28f48911761f303c02c93177bb1dfcb586a2fc"
+  },
+  "id": "aFqotlgmlOkWr1qs4ih0v",
+  "tags": []
+}
