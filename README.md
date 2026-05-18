@@ -38,7 +38,7 @@ The system uses a **Decoupled "Fire-and-Forget" Architecture** to ensure zero la
 
 ```mermaid
 graph TD
-    User([Web User]) -->|Technical Query| Frontend[1. Advisor Agent - GPT-4o]
+    User([Web User]) -->|Technical Query| Frontend[1. Advisor Agent - GPT-5.1]
     
     subgraph "Reasoning & Tools"
     Frontend <-->|RAG| VectorDB[(Technical Manuals)]
