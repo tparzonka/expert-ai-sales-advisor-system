@@ -4,7 +4,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Reference_Architecture-blue)
 ![Tech Stack](https://img.shields.io/badge/n8n-Self_Hosted-red)
-![AI Model](https://img.shields.io/badge/Model-GPT--Lastest-green)
+![AI Model](https://img.shields.io/badge/LLM-OpenAI-green)
 ![Languages](https://img.shields.io/badge/Languages-9_Supported-orange)
 
 ---
@@ -64,13 +64,21 @@ graph TD
 ## 📂 Repository Structure
 
 *   **/workflows_sanitized/**
-    *   `1_chat_advisor_frontend.json`: The core multi-agent system with RAG, GDPR automation, and multilingual support.
-    *   `2_background_analytics.json`: The asynchronous "Fire-and-Forget" backend for lead extraction, sentiment analysis, and CRM synchronization.
+    *   `1_chat_frontend_logic.json`: The core multi-agent system with RAG, GDPR automation, and multilingual support.
+    *   `2_analytics_backend_async.json`: The asynchronous "Fire-and-Forget" backend for lead extraction, sentiment analysis, and CRM synchronization.
     *   `3_automated_reporting.json`: A scheduled business intelligence (BI) workflow that generates weekly performance audits and lead quality summaries for management.
-*   **/diagrams/**: Technical architecture diagrams and logic flow schematics (Mermaid & screenshots).
-*   **/mock_data/**: Sanitized technical specifications (CSV/PDF) and sample lead log templates for testing.
+*   **/diagrams/**: Architecture diagrams for the frontend, backend and reporting workflows (PNG).
+*   **/mock_data/**: Sanitized product catalog and sample lead and chat log templates (CSV) for testing.
 
 ---
+
+## ⚡ Quick Start
+
+1. In n8n, import the workflows with **Workflows → Import from file**, starting with `2_analytics_backend_async.json`.
+2. Copy the ID of the imported backend workflow into the `Async Analytics Trigger` node of `1_chat_frontend_logic.json`, replacing `YOUR_BACKEND_WORKFLOW_ID`.
+3. Replace `YOUR_GOOGLE_SHEET_ID` in the Google Sheets nodes (backend and reporting) with your own sheets. The backend writes to a conversation log (`SessionID`, `Date`, `User Query`, `Bot Response`, `Sentiment`, `Execution ID`) and a leads sheet (`Name`, `Phone`, `Interest`, `Sentiment`). `mock_data/` has sample rows.
+4. Add your OpenAI and Google credentials, and set the real recipient in place of `manager@example.com` in `3_automated_reporting.json`.
+
 ---
 
 ## 🧠 Engineering Challenges & Solutions
