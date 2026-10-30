@@ -1,132 +1,103 @@
-# 🤖 Expert AI Technical Advisor & Sales Automation System
+# AI Technical Sales Advisor
 
-> **Reference Architecture:** A sophisticated, multi-agent AI system designed for technical sales of complex industrial machinery. Features a high-fidelity RAG engine, automated GDPR compliance, multilingual support (9 languages), and an asynchronous lead-capture pipeline.
+A chat advisor for a heavy machinery distributor that asks about the customer's needs before recommending a model, answers from technical documentation, and passes leads to sales in the background without slowing the conversation.
 
-![Status](https://img.shields.io/badge/Status-Reference_Architecture-blue)
-![Tech Stack](https://img.shields.io/badge/n8n-Self_Hosted-red)
-![AI Model](https://img.shields.io/badge/LLM-OpenAI-green)
-![Languages](https://img.shields.io/badge/Languages-9_Supported-orange)
+![Status](https://img.shields.io/badge/status-reference_implementation-blue)
+![n8n](https://img.shields.io/badge/built_with-n8n_(self--hosted)-red)
+![LLM](https://img.shields.io/badge/LLM-OpenAI_GPT--4o-green)
 
----
+> [!NOTE]
+> This repository is a sanitized reference implementation of a system I designed for machinery distributors. Brand data, credentials and client-specific logic are removed. The workflows here are a simplified version of the production setup; see [What's in this repository](#whats-in-this-repository) for exactly what is included.
 
-## ⚠️ Disclaimer
-This repository contains a sanitized reference implementation inspired by production systems architected for heavy machinery distributors. **All proprietary brand data, internal API credentials, and client-specific business logic have been removed.** This project demonstrates architectural patterns and prompt engineering for enterprise AI deployments.
+## The problem
 
----
+Buying industrial equipment is a technical decision. A customer asking about an attachment needs to know whether it fits their base machine's power and capacity, and the answer is buried in PDF manuals and spec sheets. Sales advisors spend their time answering the same questions, and website visitors who come outside office hours get nothing.
 
-## 💡 System Capabilities
+A generic chatbot makes this worse. It will happily confirm a configuration that cannot work, and it either asks for a phone number too early, which drives people away, or never asks at all.
 
-This system acts as a **Virtual Technical Consultant** for complex, high-ticket equipment. It follows a "Diagnose before Propose" methodology, ensuring that recommendations are technically viable and compliant with engineering constraints.
+## The solution
 
-### Core Features:
-*   **Multi-Agent Architecture:** Three specialized agents (Technical Advisor, Web Search Fallback, GDPR Compliance) working in parallel for accuracy and legal safety.
-*   **Multilingual Intelligence (9 Languages):** Automatically detects and adapts to user's language (Polish, English, Ukrainian, German, French, Spanish, Italian, Lithuanian, Czech) using character-pattern recognition.
-*   **Autonomous GDPR Compliance:** Context-aware agent automatically inserts localized legal disclaimers when personal data is requested.
-*   **Technical Diagnosis Engine:** The agent identifies customer requirements (capacity, power, operational scale) before searching the Vector Store for specific equipment models.
-*   **Engineering "Sanity Check":** Built-in logic to prevent configuration errors (e.g., ensuring an attachment is compatible with the base machine's power output).
-*   **Brand Exclusion Logic:** Intelligent query processing that filters out competitor mentions when searching the internal knowledge base for compatible solutions.
-*   **Asynchronous Lead Capture:** A dedicated "Sentiment Agent" parses conversation history in the background to extract lead data (Name, Phone, Intent) only when purchase signals are detected.
-*   **Security Layer:** Anti-prompt-injection filters and instruction leak prevention to block reconnaissance attempts.
-
----
-
-## 🛠️ System Architecture
-
-The system uses a **Decoupled "Fire-and-Forget" Architecture** to ensure zero latency for the end user.
-
-### Logic Flow
+Three n8n workflows split the work between answering the customer and capturing the lead.
 
 ```mermaid
 graph TD
-    User([Web User]) -->|Technical Query| Frontend[1. Advisor Agent - GPT-5.1]
-    
-    subgraph "Reasoning & Tools"
-    Frontend <-->|RAG| VectorDB[(Technical Manuals)]
-    Frontend <-->|Fallback| WebSearch[Web Search Agent]
-    Frontend <-->|Auto-Trigger| GDPR[GDPR Compliance Agent]
+    User([Website visitor]) -->|Question| Advisor[1. Advisor agent<br/>GPT-4o + conversation memory]
+    Advisor -->|Answer| User
+    Advisor -.->|Fire and forget| Backend[2. Analytics workflow]
+
+    subgraph "Background, does not delay the reply"
+    Backend --> Extract[Extraction agent<br/>GPT-4o mini]
+    Extract --> Check{Phone number<br/>provided?}
+    Check -->|Yes| Leads[(Leads sheet)]
+    Extract --> Log[(Conversation log)]
     end
 
-    Frontend -->|Instant Response| User
-    
-    %% Async Trigger
-    Frontend -.->|Async Execute| Backend[2. Analytics Workflow]
-    
-    subgraph "Background Processing"
-    Backend -->|Lead Parsing| LeadAgent((Sentiment Agent - GPT-5.1))
-    LeadAgent -->|JSON Object| Qualifier{Is Valid Lead?}
-    Qualifier -->|Yes| CRM[(CRM / Google Sheets)]
-    Qualifier -->|No| Logs[(Conversation Logs)]
-    end
+    Timer[Weekly timer] --> Report[3. Reporting workflow<br/>GPT-4o summary by email]
+    Log --> Report
 ```
 
----
+**1. Advisor.** The agent's prompt follows a fixed order: diagnose first (ask about requirements and use), then look up specs in the knowledge base, then recommend specific models with links. If the documentation doesn't cover something, it says so and suggests contacting a person instead of guessing. When a visitor shows buying intent, for example asking about price or financing, it asks for a name and phone number and includes the privacy notice.
 
-## 📂 Repository Structure
+**2. Analytics, in the background.** After every reply the advisor starts the analytics workflow with `waitForSubWorkflow: false`, so the visitor gets the answer without waiting for analysis. A second agent reads the conversation and returns JSON with `sentiment` (HOT LEAD / COLD LEAD / SUPPORT / SPAM), `name`, `phone` and `interest`. Every exchange goes to a conversation log; conversations with a phone number also go to the leads sheet.
 
-*   **/workflows_sanitized/**
-    *   `1_chat_frontend_logic.json`: The core multi-agent system with RAG, GDPR automation, and multilingual support.
-    *   `2_analytics_backend_async.json`: The asynchronous "Fire-and-Forget" backend for lead extraction, sentiment analysis, and CRM synchronization.
-    *   `3_automated_reporting.json`: A scheduled business intelligence (BI) workflow that generates weekly performance audits and lead quality summaries for management.
-*   **/diagrams/**: Architecture diagrams for the frontend, backend and reporting workflows (PNG).
-*   **/mock_data/**: Sanitized product catalog and sample lead and chat log templates (CSV) for testing.
+**3. Weekly report.** A scheduled workflow takes the last 7 days of logs and has GPT-4o write an HTML report: number of conversations, top questions, questions the bot couldn't answer, high-intent leads, and suggested fixes to the knowledge base or prompt. The report goes to the sales manager by email.
 
----
+## Key decisions
 
-## ⚡ Quick Start
+**Separate answering from analysis.** Extracting lead data in the same request as the answer would add several seconds to every reply. Running it as a detached sub-workflow keeps the chat responsive, and a failure in analytics can't break the conversation.
+
+**Diagnose before recommending.** The prompt forbids proposing a model until the agent knows the requirements. The aim is fewer wrong recommendations that a sales advisor would later have to correct.
+
+**Ask for contact details only after a buying signal.** The advisor stays in advisory mode until the visitor asks about price, financing or availability. That is the moment when asking for a phone number feels like help instead of a form.
+
+**Spreadsheets as a lightweight CRM.** For the size of the client, Google Sheets was enough and let the sales team use the data from day one without new software.
+
+## What's in this repository
+
+| Part | In this repo | Production system |
+|---|---|---|
+| Advisor agent with diagnose → retrieve → recommend prompt | Yes | Yes |
+| Conversation memory | Yes | Yes |
+| Async lead extraction to Google Sheets | Yes | Yes |
+| Weekly AI summary by email | Yes | Yes |
+| Knowledge base (OpenAI File Search, vector store) | Referenced in the prompt, tool not attached | Yes |
+| Web search fallback agent | No | Yes |
+| Separate GDPR agent inserting a localized privacy notice | No (one instruction in the prompt) | Yes |
+| Language detection for 9 languages (PL, EN, UK, DE, FR, ES, IT, LT, CS) | No | Yes |
+| Prompt-injection and instruction-leak filters | No | Yes |
+| Compatibility check against base machine specs, competitor-brand filtering | No | Yes |
+
+## Results
+
+The advisor answers technical questions at any hour, and the sales team gets a sheet of conversations with a phone number and the product of interest instead of reading raw chat logs. I don't have measured response times or conversion figures from the deployment, so none are claimed here.
+
+## Who did what
+
+I designed and directed the project. AI tools wrote most of the code.
+
+- **Me:** designed the workflow architecture and the async pattern, wrote the rules the advisor follows (diagnosis first, compatibility checks, competitor filtering, when to ask for data), designed the GDPR and language handling, set up the VPS, Docker and the knowledge base structure.
+- **AI:** wrote JavaScript for JSON transformation and date filtering, helped debug API errors and rate limits, and drafted the HTML email template for reports.
+
+## Quick start
 
 1. In n8n, import the workflows with **Workflows → Import from file**, starting with `2_analytics_backend_async.json`.
 2. Copy the ID of the imported backend workflow into the `Async Analytics Trigger` node of `1_chat_frontend_logic.json`, replacing `YOUR_BACKEND_WORKFLOW_ID`.
-3. Replace `YOUR_GOOGLE_SHEET_ID` in the Google Sheets nodes (backend and reporting) with your own sheets. The backend writes to a conversation log (`SessionID`, `Date`, `User Query`, `Bot Response`, `Sentiment`, `Execution ID`) and a leads sheet (`Name`, `Phone`, `Interest`, `Sentiment`). `mock_data/` has sample rows.
-4. Add your OpenAI and Google credentials, and set the real recipient in place of `manager@example.com` in `3_automated_reporting.json`.
+3. Replace `YOUR_GOOGLE_SHEET_ID` in the Google Sheets nodes (backend and reporting). The backend writes to a conversation log (`SessionID`, `Date`, `User Query`, `Bot Response`, `Sentiment`, `Execution ID`) and a leads sheet (`Name`, `Phone`, `Interest`, `Sentiment`). `mock_data/` has sample rows.
+4. Add OpenAI and Google credentials, and replace `manager@example.com` in `3_automated_reporting.json` with the real recipient.
+5. To answer from your own documents, attach a vector store tool to the `AI Sales Agent` node and replace `[INSERT_COMPANY_NAME]` in its system prompt.
 
----
+## Requirements
 
-## 🧠 Engineering Challenges & Solutions
+- n8n, self-hosted on Docker
+- OpenAI API (GPT-4o, GPT-4o mini)
+- Google Sheets and Gmail APIs
 
-### 1. Zero-Latency Asynchronous Analytics (The "Decoupling" Pattern)
-**Problem:** Real-time sentiment analysis and lead data extraction traditionally add 5-10 seconds to the response time, significantly degrading the user experience.  
-**Solution:** I implemented a **Decoupled Architecture** using n8n's sub-workflow execution with the `waitForSubWorkflow: false` (Fire & Forget) configuration. The Advisor Agent responds to the user in under 3 seconds, while a background "Sentiment Agent" (GPT-5.1) handles the complex data parsing and CRM logging independently.
+## Repository structure
 
-### 2. Autonomous GDPR Compliance Without Manual Intervention
-**Problem:** Manual insertion of data processing notices is error-prone and breaks conversation flow.  
-**Solution:** Developed a **Context-Aware GDPR Agent** that monitors conversation history and auto-injects localized legal disclaimers (in the user's detected language) when personal data requests are identified. This ensures 100% compliance without human oversight.
-
-### 3. Multilingual Adaptation Without External Translation APIs
-**Problem:** Translation APIs add latency, cost, and privacy concerns (data sent to third parties).  
-**Solution:** Engineered **Character-Pattern Language Detection** using Unicode regex. The system analyzes special characters in user input (ą, ę, ł for Polish; ґ, є, ї for Ukrainian; ä, ö, ü for German, etc.) to identify language and switches response style contextually. Supports 9 languages with zero external API calls.
-
-### 4. Engineering Constraint Validation & Hallucination Control
-**Problem:** Generic LLMs often agree to technically impossible configurations (e.g., suggesting a high-capacity attachment for a low-power base machine).  
-**Solution:** Developed a **Strict Logic Layer** within the System Prompt. The agent is forced to perform a "Technical Sanity Check" by cross-referencing user requirements with the verified technical specs in the Vector Store. If a mismatch is detected, the agent is programmed to politely correct the user rather than providing a hallucinated solution.
-
-### 5. Intent-Triggered Lead Conversion
-**Problem:** Static "contact us" forms are often ignored, while aggressive bots asking for data too early increase bounce rates.  
-**Solution:** Engineered a **Contextual Conversion Trigger**. The AI remains in "Advisory Mode" until it detects specific purchase intent signals (e.g., pricing inquiries, requests for financing, or compatibility questions). At that precise moment, the agent triggers a lead-capture module, providing a seamless transition from information gathering to a sales opportunity.
-
-### 6. Background Data Structuring for Sales Prioritization
-**Problem:** Raw chat logs are time-consuming for sales managers to review and audit.  
-**Solution:** The background Analytics Workflow uses **JSON Output Parsing** (GPT-5.1 with strict schema enforcement) to distill entire conversations into four actionable fields: `sentiment` (HOT/COLD/SERWIS), `phone`, `name`, and `interest`. This allows for automated lead scoring and ensures that the sales team prioritizes the highest-value inquiries first.
-
----
-
-## 🤝 Transparency: Human vs. AI Role
-
-This project was built using an **AI-Augmented Systems Engineering** approach, focusing on high-level architecture and precise prompt engineering.
-
-*   **My Role (Architect):** Designed the multi-agent workflow architecture (Advisor, Web Search, GDPR agents) and async decoupling pattern, defined the technical constraint validation rules and brand exclusion logic, engineered the GDPR compliance triggers and multilingual detection strategy (character-pattern regex), configured the VPS environment, Docker containers, and RAG (Vector Store) hierarchy, developed the security layer for instruction leak prevention.
-*   **AI Role:** Assisted in generating specific JavaScript for JSON data transformation and date parsing, provided troubleshooting support for API-specific error handling (e.g., handling rate limits and token optimization), suggested HTML email template formatting for automated reporting.
-
----
-
-## 🚀 Deployment Requirements
-
-*   **Orchestrator:** n8n (Self-hosted on Docker)
-*   **Inference Engines:** OpenAI GPT-5.1
-*   **Knowledge Base:** OpenAI File Search (RAG with Vector Store)
-*   **Data Destination:** Google Sheets API (as a Lightweight CRM)
-*   **External Tools:** Authorized Web Search Tool (for dynamic updates), Calculator (specification validation)
-
----
-
-**Last Updated:** May 2026  
-**Repository Version:** 2.0 (Multi-Agent Architecture with GDPR Automation & Multilingual Support)
+| Path | Contents |
+|---|---|
+| `workflows_sanitized/1_chat_frontend_logic.json` | Chat trigger, advisor agent, memory, async trigger |
+| `workflows_sanitized/2_analytics_backend_async.json` | Lead extraction agent, qualification check, Google Sheets logging |
+| `workflows_sanitized/3_automated_reporting.json` | Weekly log summary sent by Gmail |
+| `diagrams/` | Screenshots of the three workflows |
+| `mock_data/` | Sample product catalog, chat logs and leads sheet (CSV) |
